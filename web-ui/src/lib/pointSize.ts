@@ -1,24 +1,31 @@
 /**
  * Picks a point size for a point cloud by minimizing a hole-vs-blur loss over
- * the cloud's local point spacing.
+ * the cloud's local point spacing. Used by the Square point shape only (Disc
+ * gets per-point Voronoi radii from pointFeatures.ts).
  *
- * Each point is drawn as a square splat of world width s. Around point i the
- * surface is sampled every d_i meters:
- *   s < d_i  -> gaps between splats (holes)
- *   s > d_i  -> splats overlap and blur fine detail
+ * 1. Spacing d_i. Sample `samples` points; for each, take the distance r_k to
+ *    its k-th nearest neighbor (k = 8) and convert it to spacing:
+ *      d_i = r_k · √(π / k)
+ *    On a surface of density ρ (points/m²), E[r_k] ≈ √(k / (πρ)) and the
+ *    sample spacing is d = 1/√ρ. The k-th neighbor (not the 1st) is used so
+ *    near-duplicate points from fused scans don't collapse the estimate.
  *
- * Loss (pinball / quantile loss):
- *   L(s) = Σ_i  α·max(0, d_i − s) + β·max(0, s − d_i)
+ * 2. Loss. Each point is a square splat of world width s:
+ *      s < d_i  -> gaps between splats (holes), penalty α per unit
+ *      s > d_i  -> splats overlap and blur detail, penalty β per unit
+ *    Pinball (quantile) loss:
+ *      L(s) = Σ_i [ α·max(0, d_i − s) + β·max(0, s − d_i) ]
  *
- * It is convex and piecewise linear, and its minimizer has a closed form:
- * the τ-quantile of {d_i} with τ = α / (α + β). No iterative fitting is needed.
- * With α = 3, β = 1 (a hole is 3× worse than blur), τ = 0.75: 75% of the
- * surface renders hole-free.
+ * 3. Minimizer. L is convex and piecewise linear. Growing s slightly lowers the
+ *    loss by α for the points still above s (fraction 1 − F(s)) and raises it
+ *    by β for those already below (fraction F(s)), where F is the CDF of d_i.
+ *    The optimum balances the two:
+ *      α·(1 − F(s)) = β·F(s)  ->  F(s*) = τ = α / (α + β)
+ *    So s* is the τ-quantile of {d_i}: one sort, no iterative fitting.
+ *    Defaults α = 3.4, β = 0.8 give τ ≈ 0.81 (about 81% of the surface
+ *    renders hole-free), s* ≈ 18 mm on room_fused.ply.
  *
- * Spacing is measured from the k-th nearest neighbor rather than the 1st, so
- * near-duplicate points from fused scans don't collapse the estimate. On a
- * surface of density ρ (points/m²), E[r_k] ≈ √(k / (πρ)) and the sample spacing
- * is d = 1/√ρ, so d ≈ r_k · √(π / k).
+ * 4. To three.js units: size = s* / tan(fov / 2)  (worldSizeToMaterialSize).
  *
  * Pure function with no imports (runs in a worker or Node).
  */
