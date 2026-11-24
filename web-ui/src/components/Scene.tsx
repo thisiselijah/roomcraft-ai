@@ -9,11 +9,14 @@ import FlyControls, { moveKeyMap } from "./FlyControls";
 import PlacedObjects from "./objects/PlacedObjects";
 import { BACKGROUND_THEMES, useViewerStore } from "@/store/viewer";
 import { useObjectStore } from "@/store/objects";
+import { getScene } from "@/lib/sceneCatalog";
 
 export default function Scene() {
   const mode = useViewerStore((s) => s.background);
   const theme = BACKGROUND_THEMES[mode];
   const select = useObjectStore((s) => s.select);
+  const scene = getScene(useViewerStore((s) => s.sceneId));
+  const showInferred = useViewerStore((s) => s.showInferred);
 
   return (
     <KeyboardControls map={moveKeyMap}>
@@ -24,7 +27,7 @@ export default function Scene() {
       >
         <color attach="background" args={[theme.background]} />
         <Suspense fallback={null}>
-          <PointCloud url="/scene/room_fused.ply" />
+          <PointCloud key={scene.id} url={scene.url} showInferred={showInferred} />
         </Suspense>
         <PlacedObjects />
         <Grid

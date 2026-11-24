@@ -18,25 +18,29 @@ type Props = {
   pointSize?: number;
   /** Starting camera height above the floor, in meters. */
   eyeHeight?: number;
+  /** Draw inferred (hole-filling) points too; false keeps measured ones only. */
+  showInferred?: boolean;
 };
 
 /** Z-up scan -> Y-up world. */
 const ROTATION: [number, number, number] = [-Math.PI / 2, 0, 0];
 
-export default function PointCloud({ url, pointSize, eyeHeight = 1.6 }: Props) {
+export default function PointCloud({ url, pointSize, eyeHeight = 1.6, showInferred = true }: Props) {
   // PLYLoader reads x/y/z and colors; the raw sRGB bytes are also kept as a
-  // custom "srgb" attribute so colors can be decoded at 16-bit precision.
+  // custom "srgb" attribute so colors can be decoded at 16-bit precision, and
+  // the per-point "inferred" flag (0 = measured) is kept for filtering.
   const loaded = useLoader(PLYLoader, url, (loader) =>
-    loader.setCustomPropertyNameMapping({ srgb: ["red", "green", "blue"] }),
+    loader.setCustomPropertyNameMapping({ srgb: ["red", "green", "blue"], inferred: ["inferred"] }),
   );
-  const geometry = useMemo(() => makeDisplayGeometry(loaded), [loaded]);
+  const geometry = useMemo(
+    () => makeDisplayGeometry(loaded, { measuredOnly: !showInferred }),
+    [loaded, showInferred],
+  );
   useEffect(() => () => geometry.dispose(), [geometry]);
 
   // Floor height, horizontal center and an open interior viewpoint (~25 ms).
-  const room = useMemo(
-    () => analyzeRoom(geometry.getAttribute("position").array),
-    [geometry],
-  );
+  // Uses all points so toggling inferred points doesn't move the room or camera.
+  const room = useMemo(() => analyzeRoom(loaded.getAttribute("position").array), [loaded]);
 
   // Per-point spacing, normals and coverage radius (worker, a few seconds).
   // Plain points render until it's ready.

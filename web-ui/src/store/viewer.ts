@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { DEFAULT_SCENE_ID } from "@/lib/sceneCatalog";
 
 export type BackgroundMode = "dark" | "light";
 
@@ -31,6 +32,12 @@ export type AnalysisInfo =
 export type PointShape = "square" | "disc";
 
 type ViewerState = {
+  /** Active room scan (see lib/sceneCatalog.ts). */
+  sceneId: string;
+  setSceneId: (id: string) => void;
+  /** Show inferred (hole-filling) points; off keeps measured points only. */
+  showInferred: boolean;
+  setShowInferred: (show: boolean) => void;
   pointShape: PointShape;
   setPointShape: (shape: PointShape) => void;
   analysis: AnalysisInfo;
@@ -47,6 +54,10 @@ type ViewerState = {
 
 /** Viewer settings shared between the UI panels and the 3D scene. */
 export const useViewerStore = create<ViewerState>()((set) => ({
+  sceneId: DEFAULT_SCENE_ID,
+  setSceneId: (sceneId) => set({ sceneId }),
+  showInferred: true,
+  setShowInferred: (showInferred) => set({ showInferred }),
   pointShape: "disc",
   setPointShape: (pointShape) => set({ pointShape }),
   analysis: { status: "idle" },

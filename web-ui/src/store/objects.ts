@@ -22,6 +22,8 @@ type ObjectsState = {
   update: (id: string, patch: Partial<Omit<PlacedObject, "id" | "catalogId">>) => void;
   remove: (id: string) => void;
   select: (id: string | null) => void;
+  /** Removes every object (e.g. when switching to another room scan). */
+  clear: () => void;
 };
 
 let nextId = 1;
@@ -52,4 +54,5 @@ export const useObjectStore = create<ObjectsState>()((set) => ({
       selectedId: s.selectedId === id ? null : s.selectedId,
     })),
   select: (selectedId) => set({ selectedId }),
+  clear: () => set({ objects: [], selectedId: null }),
 }));
