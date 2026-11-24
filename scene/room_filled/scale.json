@@ -1,0 +1,16 @@
+{
+  "metres_per_unit": 3.836166378659822,
+  "method": "phone_height",
+  "phone_height_m": 1.7,
+  "note": "from the phone height (about 5-6 % off on TUM sequences); A4: no A4 sheet found",
+  "a4": {
+    "frames": 0,
+    "reason": "no A4 sheet found"
+  },
+  "extent_m": {
+    "x": 3.35,
+    "y": 5.34,
+    "z": 2.16
+  },
+  "images": 92
+}

@@ -1,0 +1,39 @@
+{
+  "overall": "fair",
+  "grades": {
+    "consistency_pct": "fair",
+    "coverage_pct": "good",
+    "floor_sd_cm": "fair",
+    "scale": "fair"
+  },
+  "metrics": {
+    "consistency_pct": 0.28,
+    "consistency_cm": 0.5,
+    "coverage_pct": 82.0,
+    "floor_sd_cm": 2.5
+  },
+  "frames": {
+    "used": 96,
+    "blurry_share": 0.1
+  },
+  "scale_method": "phone_height",
+  "hints": [
+    "畫面之間對不太起來：走慢一點、不要快速轉頭，多拍有紋理的東西（白牆、玻璃、反光螢幕最難）",
+    "地板不夠平：拍攝時讓地板多出現在畫面裡，避開反光的地板",
+    "尺寸是用手機高度估的（約 ±6%）：要更準，拍攝開頭在地上放一張 A4 紙拍 2～3 秒"
+  ],
+  "limits": {
+    "consistency_pct": [
+      0.22,
+      0.4
+    ],
+    "coverage_pct": [
+      80.0,
+      50.0
+    ],
+    "floor_sd_cm": [
+      1.5,
+      2.5
+    ]
+  }
+}
