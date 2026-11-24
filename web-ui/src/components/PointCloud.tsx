@@ -1,15 +1,13 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { useLoader, useThree } from "@react-three/fiber";
-import type { PerspectiveCamera } from "three";
+import { useLoader } from "@react-three/fiber";
 import { PLYLoader } from "three/addons/loaders/PLYLoader.js";
 import { analyzeRoom } from "@/lib/roomAnalysis";
-import { estimatePointSize, worldSizeToMaterialSize } from "@/lib/pointSize";
 import { useViewerStore, type CameraView } from "@/store/viewer";
 import { usePointAnalysis } from "@/lib/usePointAnalysis";
 import { makeDisplayGeometry } from "@/lib/displayGeometry";
-import DiscPoints from "./discs/DiscPoints";
+import PointSplats from "./PointSplats";
 
 type Props = {
   url: string;
@@ -40,16 +38,6 @@ export default function PointCloud({ url, pointSize, eyeHeight = 1.6 }: Props) {
     [geometry],
   );
 
-  // Auto point size: the hole-vs-blur loss minimizer (~0.2 s for 1.7M points),
-  // converted from world width to material size for the current camera FOV.
-  const fov = useThree((s) => (s.camera as PerspectiveCamera).fov ?? 50);
-  const spacing = useMemo(
-    () => (pointSize === undefined ? estimatePointSize(geometry.getAttribute("position").array) : null),
-    [geometry, pointSize],
-  );
-  const pointScale = useViewerStore((s) => s.pointScale);
-  const pointShape = useViewerStore((s) => s.pointShape);
-
   // Per-point spacing, normals and coverage radius (worker, a few seconds).
   // Plain points render until it's ready.
   const analysisState = usePointAnalysis(geometry);
@@ -68,7 +56,6 @@ export default function PointCloud({ url, pointSize, eyeHeight = 1.6 }: Props) {
     });
   }, [analysisState, setAnalysis]);
   useEffect(() => () => setAnalysis({ status: "idle" }), [setAnalysis]);
-  const size = (pointSize ?? worldSizeToMaterialSize(spacing!.worldSize, fov)) * pointScale;
 
   // The scan is Z-up; Three.js is Y-up. Points are rotated -90° about X,
   // (x, y, z) -> (x, z, -y), then the group centers the room horizontally and
@@ -112,33 +99,13 @@ export default function PointCloud({ url, pointSize, eyeHeight = 1.6 }: Props) {
     return () => setHomeView(null);
   }, [room, offset, eyeHeight, setHomeView]);
 
-  // Discs need the analysis (radius + normals); plain points until then.
-  if (pointShape === "disc" && analysisState.status === "ready") {
-    const { features } = analysisState.analysis;
-    return (
-      <DiscPoints
-        geometry={geometry}
-        position={offset}
-        rotation={ROTATION}
-        radius={features.radius}
-        normals={features.normals}
-        sizeScale={pointScale}
-      />
-    );
-  }
-
   return (
-    <group position={offset}>
-      <points geometry={geometry} rotation={ROTATION}>
-        <pointsMaterial
-          size={size}
-          sizeAttenuation
-          vertexColors={geometry.hasAttribute("color")}
-          // Scanned colors are final; R3F's default ACES tone mapping would
-          // shift their saturation and contrast.
-          toneMapped={false}
-        />
-      </points>
-    </group>
+    <PointSplats
+      geometry={geometry}
+      analysis={analysisState}
+      position={offset}
+      rotation={ROTATION}
+      pointSize={pointSize}
+    />
   );
 }
