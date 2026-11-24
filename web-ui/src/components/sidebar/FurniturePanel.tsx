@@ -1,69 +1,35 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  Archive,
-  Armchair,
-  Bed,
-  BedSingle,
-  BookOpen,
-  Flower2,
-  Frame,
-  Lamp,
-  LampDesk,
-  LampFloor,
-  RectangleHorizontal,
-  Search,
-  Sofa,
-  Tv,
-  type LucideIcon,
-} from "lucide-react";
+import Image from "next/image";
+import { Search } from "lucide-react";
+import { OBJECT_CATALOG, OBJECT_CATEGORIES, type ObjectCategory } from "@/lib/objectCatalog";
+import { getDropPoint } from "@/lib/objectInteraction";
+import { useObjectStore } from "@/store/objects";
 
-// UI only: a placeholder catalog; "Add to scene" does nothing yet.
+const CATEGORIES = ["All", ...OBJECT_CATEGORIES] as const;
+type Category = "All" | ObjectCategory;
 
-const CATEGORIES = ["All", "Seating", "Tables", "Beds", "Storage", "Lighting", "Decor"] as const;
-type Category = (typeof CATEGORIES)[number];
-
-type Item = {
-  id: string;
-  name: string;
-  category: Exclude<Category, "All">;
-  dims: string; // W × D × H, cm
-  icon: LucideIcon;
-};
-
-const CATALOG: Item[] = [
-  { id: "sofa-3", name: "3-Seat Sofa", category: "Seating", dims: "210 × 90 × 85", icon: Sofa },
-  { id: "armchair", name: "Armchair", category: "Seating", dims: "80 × 85 × 90", icon: Armchair },
-  { id: "dining-table", name: "Dining Table", category: "Tables", dims: "180 × 90 × 75", icon: RectangleHorizontal },
-  { id: "coffee-table", name: "Coffee Table", category: "Tables", dims: "110 × 60 × 45", icon: RectangleHorizontal },
-  { id: "double-bed", name: "Double Bed", category: "Beds", dims: "160 × 210 × 100", icon: Bed },
-  { id: "single-bed", name: "Single Bed", category: "Beds", dims: "90 × 200 × 90", icon: BedSingle },
-  { id: "bookshelf", name: "Bookshelf", category: "Storage", dims: "80 × 30 × 200", icon: BookOpen },
-  { id: "cabinet", name: "Cabinet", category: "Storage", dims: "120 × 45 × 80", icon: Archive },
-  { id: "tv-stand", name: "TV Stand", category: "Storage", dims: "160 × 40 × 50", icon: Tv },
-  { id: "floor-lamp", name: "Floor Lamp", category: "Lighting", dims: "40 × 40 × 160", icon: LampFloor },
-  { id: "desk-lamp", name: "Desk Lamp", category: "Lighting", dims: "15 × 15 × 45", icon: LampDesk },
-  { id: "pendant", name: "Pendant Light", category: "Lighting", dims: "45 × 45 × 30", icon: Lamp },
-  { id: "plant", name: "Potted Plant", category: "Decor", dims: "40 × 40 × 120", icon: Flower2 },
-  { id: "wall-art", name: "Wall Art", category: "Decor", dims: "90 × 3 × 60", icon: Frame },
-];
-
+/** Catalog of object point clouds; metric ones can be added to the scene. */
 export default function FurniturePanel() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<Category>("All");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const add = useObjectStore((s) => s.add);
 
   const items = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return CATALOG.filter(
+    return OBJECT_CATALOG.filter(
       (it) =>
         (category === "All" || it.category === category) &&
         (!q || it.name.toLowerCase().includes(q)),
     );
   }, [query, category]);
 
-  const selected = CATALOG.find((it) => it.id === selectedId) ?? null;
+  const selected = OBJECT_CATALOG.find((it) => it.id === selectedId) ?? null;
+  const addSelected = () => {
+    if (selected?.metric) add(selected.id, getDropPoint());
+  };
 
   return (
     <div className="flex min-h-full flex-col">
@@ -109,28 +75,42 @@ export default function FurniturePanel() {
           <ul className="grid grid-cols-2 gap-2">
             {items.map((it) => {
               const active = it.id === selectedId;
-              const Icon = it.icon;
               return (
                 <li key={it.id}>
                   <button
                     type="button"
+                    disabled={!it.metric}
                     onClick={() => setSelectedId(active ? null : it.id)}
+                    onDoubleClick={() => it.metric && add(it.id, getDropPoint())}
                     aria-pressed={active}
-                    className={`w-full rounded-lg border p-2 text-left transition-colors ${
+                    title={it.metric ? "Double-click to add" : "No metric size yet (normalized units)"}
+                    className={`w-full rounded-lg border p-2 text-left transition-colors disabled:cursor-not-allowed ${
                       active
                         ? "border-indigo-500 bg-indigo-500/10"
-                        : "border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900"
+                        : "border-zinc-800 enabled:hover:border-zinc-700 enabled:hover:bg-zinc-900"
                     }`}
                   >
-                    <span className="mb-2 flex aspect-[4/3] items-center justify-center rounded-md bg-zinc-900">
-                      <Icon
-                        className={`size-8 ${active ? "text-indigo-400" : "text-zinc-400"}`}
-                        strokeWidth={1.5}
-                        aria-hidden
+                    <span className="relative mb-2 block aspect-[4/3] overflow-hidden rounded-md bg-zinc-900">
+                      <Image
+                        src={it.thumbnail}
+                        alt=""
+                        fill
+                        sizes="128px"
+                        unoptimized
+                        className={`object-cover ${it.metric ? "" : "opacity-40 grayscale"}`}
                       />
+                      {!it.metric && (
+                        <span className="absolute right-1 bottom-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-amber-300">
+                          Needs scale
+                        </span>
+                      )}
                     </span>
-                    <span className="block truncate text-sm text-zinc-100">{it.name}</span>
-                    <span className="block font-mono text-[11px] text-zinc-500">{it.dims} cm</span>
+                    <span className={`block truncate text-sm ${it.metric ? "text-zinc-100" : "text-zinc-500"}`}>
+                      {it.name}
+                    </span>
+                    <span className="block font-mono text-[11px] text-zinc-500">
+                      {it.dims ? `${it.dims.join(" × ")} cm` : "size unknown"}
+                    </span>
                   </button>
                 </li>
               );
@@ -151,7 +131,8 @@ export default function FurniturePanel() {
         </p>
         <button
           type="button"
-          disabled={!selected}
+          disabled={!selected?.metric}
+          onClick={addSelected}
           className="w-full rounded-md bg-indigo-500 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-400 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500"
         >
           Add to scene

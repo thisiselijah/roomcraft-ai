@@ -5,6 +5,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useKeyboardControls, type KeyboardControlsEntry } from "@react-three/drei";
 import { Euler, Vector3 } from "three";
 import { useViewerStore } from "@/store/viewer";
+import { getObjectDrag } from "@/lib/objectInteraction";
 
 export type MoveAction =
   | "forward"
@@ -44,7 +45,8 @@ type Props = {
 const UP = new Vector3(0, 1, 0);
 const MAX_PITCH = Math.PI / 2 - 0.01;
 
-function isEditableFocused() {
+/** Whether a text field has focus (keyboard shortcuts should be ignored). */
+export function isEditableFocused() {
   const el = document.activeElement;
   return (
     el instanceof HTMLInputElement ||
@@ -126,6 +128,8 @@ export default function FlyControls({
       const dx = e.movementX;
       const dy = e.movementY;
       if (button === 0) {
+        // Left-drag on a placed object moves the object instead.
+        if (getObjectDrag()) return;
         // FPS-style: drag right looks right, drag down looks down.
         // Use a negative lookSpeed for "grab the world" (Street View) style.
         const a = angles.current;

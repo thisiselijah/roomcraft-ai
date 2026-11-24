@@ -6,19 +6,27 @@ import { Grid, Loader, KeyboardControls } from "@react-three/drei";
 import { CircleHelp } from "lucide-react";
 import PointCloud from "./PointCloud";
 import FlyControls, { moveKeyMap } from "./FlyControls";
+import PlacedObjects from "./objects/PlacedObjects";
 import { BACKGROUND_THEMES, useViewerStore } from "@/store/viewer";
+import { useObjectStore } from "@/store/objects";
 
 export default function Scene() {
   const mode = useViewerStore((s) => s.background);
   const theme = BACKGROUND_THEMES[mode];
+  const select = useObjectStore((s) => s.select);
 
   return (
     <KeyboardControls map={moveKeyMap}>
-      <Canvas camera={{ position: [10, 10, 12], fov: 50, near: 0.05, far: 200 }}>
+      <Canvas
+        camera={{ position: [10, 10, 12], fov: 50, near: 0.05, far: 200 }}
+        // A left click on empty space (not a drag) clears the selection.
+        onPointerMissed={(e) => e.button === 0 && select(null)}
+      >
         <color attach="background" args={[theme.background]} />
         <Suspense fallback={null}>
           <PointCloud url="/scene/room_fused.ply" />
         </Suspense>
+        <PlacedObjects />
         <Grid
           infiniteGrid
           cellSize={0.5}
@@ -55,6 +63,8 @@ export default function Scene() {
           WASD / 方向鍵 移動 · E / Space 上升 · Q 下降 · Shift 加速
           <br />
           左鍵拖曳 轉動視角 · 右鍵拖曳 平移 · 滾輪 前進 / 後退
+          <br />
+          點選家具 選取 · 拖曳家具 移動 · R / Shift+R 旋轉 90° · Delete 刪除 · Esc 取消選取
         </div>
       </div>
     </KeyboardControls>
